@@ -9,7 +9,7 @@
 - <a href="https://github.com/earchibong/terraform-wordpress/blob/main/documentation.md#install-and-configure-terraform-on-your-local-system">Install and configure Terraform on local system</a>
 - <a href="https://github.com/earchibong/terraform-wordpress/blob/main/documentation.md#install-ide-for-terraform--vs-code-editor">Install IDE for Terraform — VS Code Editor</a>
 - <a href="https://github.com/earchibong/terraform-wordpress/blob/main/documentation.md#create-a-new-terraform-configuration-file-and-specify-the-aws-provider-details">Create a new Terraform configuration file and specify the AWS provider details</a>
-Create terraform.tfvars file with defined variables
+- <a href="https://github.com/earchibong/terraform-wordpress/blob/main/documentation.md#create-terraformtfvars-file-with-defined-variables">Create terraform.tfvars file with defined variables</a>
 Create an AWS Key pair for secure ssh connections to EC2 instances
 Define the VPC resource, giving it a unique name and the desired CIDR block range.
 Create the Public Subnet with auto public IP Assignment enabled in VPC
