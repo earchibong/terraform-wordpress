@@ -7,7 +7,7 @@
 ## Project Steps:
 
 - <a href="https://github.com/earchibong/terraform-wordpress/blob/main/documentation.md#install-and-configure-terraform-on-your-local-system">Install and configure Terraform on local system</a>
-Install IDE for Terraform — VS Code Editor
+- <a href="https://github.com/earchibong/terraform-wordpress/blob/main/documentation.md#install-ide-for-terraform--vs-code-editor">Install IDE for Terraform — VS Code Editor</a>
 Create a new Terraform configuration file and specify the AWS provider details, such as the access key and secret key
 Create terraform.tfvars file with defined variables
 Create an AWS Key pair for secure ssh connections to EC2 instances
