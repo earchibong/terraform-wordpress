@@ -122,6 +122,8 @@ provider "aws" {
 
 <br>
 
+<br>
+
 
 - create a file named `variables.tf` and add the following:
 
@@ -147,8 +149,6 @@ variable "base_path" {}
 
 <br>
 
-<br>
-
 Variables in terraform, are used to define values that can be passed into the infrastructure as code (IaC) templates and used throughout the configuration. Variables can be defined within the Terraform configuration file itself, or in external variable files.
 
 <br>
@@ -160,5 +160,78 @@ Variables in terraform, are used to define values that can be passed into the in
 <br>
 
 <br>
+
+## Create terraform.tfvars file with defined variables
+
+Terraform uses the `.tfvars` file to load variables for a configuration. The .tfvars file is a way to set variables in the configuration file.
+Terraform variable files use the “.tfvars” file extension and typically contain the values of your variables in a key-value format.
+
+The .tfvars file is optional, but it can be a convenient way to set variables for your configuration. If you have a `.tfvars` file in the same directory as your ``.tf configuration file, Terraform will automatically load the variables from it when you run terraform apply.
+
+Get more info on `tfvars` files <a href="https://spacelift.io/blog/terraform-tfvars">here</>
+
+<br>
+
+- create a file named `terraform.tfvars` and add the following:
+
+```
+
+# General
+region = "us-east-1"
+profile	= "default"
+keypair = "tf-deploy"
+base_path  = "[YOUR-LOCAL-FILE-PATH]"
+
+```
+
+<br>
+
+<br>
+
+<img width="1008" alt="tfvars" src="https://github.com/earchibong/terraform-wordpress/assets/92983658/7961e200-c424-4d74-9694-72d6549e0a02">
+
+
+<br>
+
+<br>
+
+## Create an AWS key pair for secure ssh connections to EC2 instances
+
+Key pairs are important for maintaining the security of AWS resources. They allow you to securely access your resources and ensure that only you (or others who have the private key) can access them.
+
+- create a file named `keypair.tf` and add the following:
+
+```
+
+# Private Key and Keypair
+## Create a key with RSA algorithm with 4096 rsa bits
+resource "tls_private_key" "private_key" {
+  algorithm = "RSA"
+  rsa_bits  = 4096
+}
+
+## Create a key pair using above private key
+resource "aws_key_pair" "keypair" {
+
+  # Name of the Key
+  key_name = var.keypair
+
+  public_key = tls_private_key.private_key.public_key_openssh
+  depends_on = [tls_private_key.private_key]
+}
+
+## Save the private key at the specified path
+resource "local_file" "save-key" {
+  content  = tls_private_key.private_key.private_key_pem
+  filename = "${var.base_path}/${var.keypair}.pem"
+}
+
+```
+
+<br>
+
+<br>
+
+## Define the VPC resource, giving it a unique name and the desired CIDR block range
 
 
