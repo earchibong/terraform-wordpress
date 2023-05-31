@@ -237,6 +237,13 @@ resource "local_file" "save-key" {
 
 <br>
 
+<img width="1025" alt="keypair" src="https://github.com/earchibong/terraform-wordpress/assets/92983658/e4ea833a-0414-405a-b3b3-b9371ceaee43">
+
+<br>
+
+<br>
+
+
 ## Define the VPC resource, giving it a unique name and the desired CIDR block range
 
 Virtual Private Cloud (VPC) is a logically isolated section of the AWS Cloud, where users can launch AWS resources in a virtual network that they define. They allow users to define and customise the network settings of their AWS resources, including the IP address range, subnets, and network gateways. They provide a secure and scalable environment for deploying and running AWS resources and allow for the use of both public and private IP addresses. They also support VPN and Direct Connect connections for secure, private communication with other networks.
@@ -357,6 +364,13 @@ resource "aws_subnet" "private-subnet" {
 <br>
 
 <br>
+
+<img width="1027" alt="subnet_private" src="https://github.com/earchibong/terraform-wordpress/assets/92983658/cdad5b60-717b-454f-82c0-ff9e4e09e7f4">
+
+<br>
+
+<br>
+
 
 ## Create an Internet Gateway for Instances in the public subnet to access the Internet
 
