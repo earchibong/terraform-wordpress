@@ -15,7 +15,7 @@
 - <a href="https://github.com/earchibong/terraform-wordpress/blob/main/documentation.md#install-ide-for-terraform--vs-code-editor">Install IDE for Terraform — VS Code Editor</a>
 - <a href="https://github.com/earchibong/terraform-wordpress/blob/main/documentation.md#create-a-new-terraform-configuration-file-and-specify-the-aws-provider-details">Create a new Terraform configuration file and specify the AWS provider details</a>
 - <a href="https://github.com/earchibong/terraform-wordpress/blob/main/documentation.md#create-terraformtfvars-file-with-defined-variables">Create terraform.tfvars file with defined variables</a>
-Create an AWS Key pair for secure ssh connections to EC2 instances
+- <a href="https://github.com/earchibong/terraform-wordpress/blob/main/documentation.md#create-an-aws-key-pair-for-secure-ssh-connections-to-ec2-instances">Create an AWS Key pair for secure ssh connections to EC2 instances</a>
 Define the VPC resource, giving it a unique name and the desired CIDR block range.
 Create the Public Subnet with auto public IP Assignment enabled in VPC
 Create a Private Subnet in VPC
@@ -410,3 +410,121 @@ resource "aws_internet_gateway" "igw" {
 
 
 Route Tables are used to control the flow of network traffic in a VPC (Virtual Private Cloud). Each route table is associated with a subnet and specifies the available routes and the targets for each route.
+
+Targets can include local subnets, internet gateways, virtual private gateways, and other network interfaces.
+
+Route tables also have a default route for internet traffic, which can be used to route internet traffic to an internet gateway or a NAT (Network Address Translation) device. THey also allow users to customise the network traffic flow in their VPC to meet the specific requirements of their applications and workloads.
+
+<br>
+
+<br>
+
+- create a file named `rt.tf` and add the following:
+
+```
+
+Define a route table for the public subnet, specifying the internet gateway as the target for all internet-bound traffic.
+resource "aws_route_table" "public-subnet-rt" {
+  depends_on = [
+    aws_vpc.vpc,
+    aws_internet_gateway.igw
+  ]
+
+  # VPC ID
+  vpc_id = aws_vpc.vpc.id
+
+  # NAT Rule
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.igw.id
+  }
+
+  tags = {
+    Name = "route-table-internet-gateway"
+  }
+}
+
+```
+
+<br>
+
+<br>
+
+<img width="1031" alt="t" src="https://github.com/earchibong/terraform-wordpress/assets/92983658/26042855-0efe-4be9-98e4-879b3f708d35">
+
+<br>
+
+<br>
+
+## Associate the routing table to the Public Subnet to provide the Internet Gateway address
+
+A route table association is a connection between a route table and a subnet. Each subnet in a VPC (Virtual Private Cloud) must be associated with a route table, which specifies the available routes and the targets for each route.
+
+<br>
+
+- create a file named `rt-association.tf` and add the following:
+
+```
+
+# Associate the routing table to the Public Subnet to provide the Internet Gateway address.
+resource "aws_route_table_association" "rt-association" {
+  depends_on = [
+    aws_vpc.vpc,
+    aws_subnet.public-subnet,
+    aws_subnet.private-subnet,
+    aws_route_table.public-subnet-rt
+  ]
+
+  # Public Subnet ID
+  subnet_id = aws_subnet.public-subnet.id
+
+  #  Route Table ID
+  route_table_id = aws_route_table.public-subnet-rt.id
+}
+
+```
+
+<br>
+
+<br>
+
+<img width="1025" alt="rt_association" src="https://github.com/earchibong/terraform-wordpress/assets/92983658/fd0b54e5-c787-4794-85bc-17ac15831ccc">
+
+<br>
+
+<br>
+
+* This configuration allows for the customisation of network traffic flow in the VPC and enables the use of internet-based services and applications.*
+
+<br>
+
+<br>
+
+## Create an Elastic IP for the NAT Gateway
+
+EIPs are useful for providing a fixed, public IP address for resources that need to be accessed from the internet, such as web servers or databases. They can be used with AWS resources such as EC2 instances, NAT gateways, and network interfaces.
+
+<br>
+
+<br>
+
+ cfreate a file named `nat-gateway-eip.tf` and add the following:
+ 
+ ```
+ 
+ # Create an Elastic IP for the NAT Gateway
+resource "aws_eip" "nat-gateway-eip" {
+  depends_on = [
+    aws_route_table_association.rt-association
+  ]
+
+  vpc = true
+}
+
+```
+
+<br>
+
+<br>
+
+## 
