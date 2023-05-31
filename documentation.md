@@ -1,6 +1,11 @@
 
 # Deploy WordPress and MySQL with Terraform on AWS EC2
 
+<br>
+
+![image](https://github.com/earchibong/terraform-wordpress/assets/92983658/618cd88f-8001-427c-bbdb-c843a6843408)
+
+<br>
 
 <br>
 
@@ -168,7 +173,7 @@ Terraform variable files use the “.tfvars” file extension and typically cont
 
 The .tfvars file is optional, but it can be a convenient way to set variables for your configuration. If you have a `.tfvars` file in the same directory as your ``.tf configuration file, Terraform will automatically load the variables from it when you run terraform apply.
 
-Get more info on `tfvars` files <a href="https://spacelift.io/blog/terraform-tfvars">here</>
+Get more info on `tfvars` files <a href="https://spacelift.io/blog/terraform-tfvars">here</a>
 
 <br>
 
@@ -234,4 +239,160 @@ resource "local_file" "save-key" {
 
 ## Define the VPC resource, giving it a unique name and the desired CIDR block range
 
+Virtual Private Cloud (VPC) is a logically isolated section of the AWS Cloud, where users can launch AWS resources in a virtual network that they define. They allow users to define and customise the network settings of their AWS resources, including the IP address range, subnets, and network gateways. They provide a secure and scalable environment for deploying and running AWS resources and allow for the use of both public and private IP addresses. They also support VPN and Direct Connect connections for secure, private communication with other networks.
 
+<br>
+
+- create a file named `vpc.tf` and add the following:
+
+```
+
+#  Define the VPC resource, giving it a unique name and the desired CIDR block range.
+resource "aws_vpc" "vpc" {
+
+  # The IPv4 CIDR block for the VPC
+  cidr_block = var.cidr_block
+
+  # A boolean flag to enable/disable DNS support in the VPC. Defaults to true.
+  enable_dns_support = true
+
+  tags = {
+    Name = "vpc"
+  }
+}
+
+```
+
+<br>
+
+<br>
+
+<img width="1030" alt="vpc" src="https://github.com/earchibong/terraform-wordpress/assets/92983658/9e72c9db-5a07-4e16-91cd-303c73f0816a">
+
+<br>
+
+<br>
+
+## Create the Public Subnet with auto public IP Assignment enabled in VPC
+Instances in a private subnet can only communicate with other resources within the VPC, and cannot directly access the internet. Whereas, instances in a public subnet can communicate with the internet, and vice versa because a public subnet is a subnet in a Virtual Private Cloud (Amazon VPC) that has been configured to allow inbound and outbound internet traffic.
+
+- create a file named `subnet-public.tf` and add the following:
+
+```
+
+# Define the public and private subnets, specifying the VPC ID, CIDR block range, and availability zone.
+resource "aws_subnet" "public-subnet" {
+  depends_on = [
+    aws_vpc.vpc
+  ]
+
+  # VPC in which subnet will be created
+  vpc_id     = aws_vpc.vpc.id
+  cidr_block = var.public_subnet_range
+
+  # The AZ for the subnet
+  availability_zone = var.az_public
+
+  # Specify true to indicate that instances launched into the subnet should be assigned a public IP address
+  map_public_ip_on_launch = true
+
+  tags = {
+    Name = "Public Subnet"
+  }
+}
+
+```
+
+<br>
+
+<br>
+
+<img width="1030" alt="subnet" src="https://github.com/earchibong/terraform-wordpress/assets/92983658/2397854c-4904-4c07-a106-2129df1c5f50">
+
+<br>
+
+<br>
+
+*note: the `depends_on` attribute can be used to specify dependencies between resources. If resource A depends on resource B, it means that resource B must be created before resource A can be created. In this case, the `vpc` must be created first before the subnet resource can be created*
+
+<br>
+
+<br>
+
+## Create a Private Subnet in VPC
+
+Private subnets do the opposite of public subnets. They cannot communicate with the internet and vice-versa. Instead, instances in a private subnet can only communicate with other resources within the VPC.
+
+<br>
+
+- create a file named `private-subnet.tf`
+
+```
+
+# Define the public and private subnets, specifying the VPC ID, CIDR block range, and availability zone.
+resource "aws_subnet" "private-subnet" {
+  depends_on = [
+    aws_vpc.vpc,
+    aws_subnet.public-subnet
+  ]
+
+  # VPC in which subnet will be created
+  vpc_id     = aws_vpc.vpc.id
+  cidr_block = var.private_subnet_range
+
+  # The AZ for the subnet
+  availability_zone = var.az_private
+
+  tags = {
+    Name = "Private Subnet"
+  }
+}
+
+```
+
+<br>
+
+*note: the `private subnet, depends on the vpc and public subnet and so cannot be created until the other two resources are created first*
+
+<br>
+
+<br>
+
+## Create an Internet Gateway for Instances in the public subnet to access the Internet
+
+An internet gateway, enables instances in the VPC to communicate with the internet and  enables internet users to connect with instances in the VPC. This allows for the use of internet-based services and applications, such as web-based applications, content delivery networks, and other internet-based services.
+
+<br>
+
+<br>
+
+- create a file named `igw.tf` and add the following:
+
+```
+
+# Create an Internet Gateway and attach it to the VPC
+resource "aws_internet_gateway" "igw" {
+  depends_on = [
+    aws_vpc.vpc,
+    aws_subnet.public-subnet,
+    aws_subnet.private-subnet
+  ]
+
+  # VPC in which IGW will be created
+  vpc_id = aws_vpc.vpc.id
+
+  tags = {
+    Name = "Internet Gateway"
+  }
+}
+
+```
+
+<br>
+
+<br>
+
+## Define a route table for the public subnet, specifying the internet gateway as the target for all internet-bound traffic
+
+
+Route Tables are used to control the flow of network traffic in a VPC (Virtual Private Cloud). Each route table is associated with a subnet and specifies the available routes and the targets for each route.
