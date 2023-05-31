@@ -6,7 +6,7 @@
 
 ## Project Steps:
 
-Install and configure Terraform on local system
+- <a href="https://github.com/earchibong/terraform-wordpress/blob/main/documentation.md#install-and-configure-terraform-on-your-local-system">Install and configure Terraform on local system</a>
 Install IDE for Terraform — VS Code Editor
 Create a new Terraform configuration file and specify the AWS provider details, such as the access key and secret key
 Create terraform.tfvars file with defined variables
