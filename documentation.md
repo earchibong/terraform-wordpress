@@ -17,7 +17,7 @@
 - <a href="https://github.com/earchibong/terraform-wordpress/blob/main/documentation.md#create-terraformtfvars-file-with-defined-variables">Create terraform.tfvars file with defined variables</a>
 - <a href="https://github.com/earchibong/terraform-wordpress/blob/main/documentation.md#create-an-aws-key-pair-for-secure-ssh-connections-to-ec2-instances">Create an AWS Key pair for secure ssh connections to EC2 instances</a>
 - <a href="https://github.com/earchibong/terraform-wordpress/blob/main/documentation.md#define-the-vpc-resource-giving-it-a-unique-name-and-the-desired-cidr-block-range">Define the VPC resource, giving it a unique name and the desired CIDR block range.</a>
-Create the Public Subnet with auto public IP Assignment enabled in VPC
+- <a href="https://github.com/earchibong/terraform-wordpress/blob/main/documentation.md#create-the-public-subnet-with-auto-public-ip-assignment-enabled-in-vpc">Create the Public Subnet with auto public IP Assignment enabled in VPC</a>
 Create a Private Subnet in VPC
 Create an Internet Gateway for Instances in the public subnet to access the Internet
 Define a route table for the public subnet, specifying the internet gateway as the target for all internet-bound traffic
