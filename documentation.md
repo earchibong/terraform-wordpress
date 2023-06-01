@@ -995,12 +995,12 @@ resource "null_resource" "bastion-provisioners" {
     host        = aws_instance.bastion.public_ip
     user        = "ec2-user"
     password    = ""
-    private_key = "tf-deploy.pem"
+    private_key = file("${var.base_path}/${var.keypair}.pem")
   }
 
   ## File Provisioner: Copies the terraform-key.pem file to /tmp/terraform-key.pem
   provisioner "file" {
-    source      = "tf-deploy.pem"
+    source      = local_file.save-key.filename
     destination = "/tmp/terraform-key.pem"
   }
 }
@@ -1013,12 +1013,12 @@ resource "null_resource" "wp-provisioners" {
     host        = aws_instance.wordpress.public_ip
     user        = "ec2-user"
     password    = ""
-    private_key = "tf-deploy.pem"
+    private_key = file("${var.base_path}/${var.keypair}.pem")
   }
 
   ## File Provisioner: Copies the terraform-key.pem file to /tmp/terraform-key.pem
   provisioner "file" {
-    source      = "tf-deploy.pem"
+    source      = local_file.save-key.filename
     destination = "/tmp/terraform-key.pem"
   }
 
@@ -1026,7 +1026,7 @@ resource "null_resource" "wp-provisioners" {
   ## Install docker, start and enable the service, pull wordpress image and create the container
   provisioner "remote-exec" {
     inline = [
-      "sudo chmod 400 /tmp/tf-deploy.pem",
+      "sudo chmod 400 /tmp/terraform-key.pem",
       "sudo yum update -y",
       "sudo yum install docker -y",
       "sudo systemctl restart docker && sudo systemctl enable docker",
