@@ -18,24 +18,24 @@
 - <a href="https://github.com/earchibong/terraform-wordpress/blob/main/documentation.md#create-an-aws-key-pair-for-secure-ssh-connections-to-ec2-instances">Create an AWS Key pair for secure ssh connections to EC2 instances</a>
 - <a href="https://github.com/earchibong/terraform-wordpress/blob/main/documentation.md#define-the-vpc-resource-giving-it-a-unique-name-and-the-desired-cidr-block-range">Define the VPC resource, giving it a unique name and the desired CIDR block range.</a>
 - <a href="https://github.com/earchibong/terraform-wordpress/blob/main/documentation.md#create-the-public-subnet-with-auto-public-ip-assignment-enabled-in-vpc">Create the Public Subnet with auto public IP Assignment enabled in VPC</a>
-Create a Private Subnet in VPC
-Create an Internet Gateway for Instances in the public subnet to access the Internet
-Define a route table for the public subnet, specifying the internet gateway as the target for all internet-bound traffic
-Associate the routing table to the Public Subnet to provide Internet Gateway Address
-Create an Elastic IP for the NAT Gateway
-Create a NAT gateway for MySQL instance to access the Internet
-Create a route table for the NAT Gateway Access which has to be associated with MySQL Instance
-Associate the above-create route table with the MySQL Instance
-Create a Security Group for the Bastion Host
-Create a Security Group for the WordPress Instance
-Create a Security Group for MySQL Instance
-Launch a Bastion Host
-Launch a Webserver Instance hosting Wordpress on it
-Null Resources and Provisioners
-Launch a MySQL Instance using the bash install script
-Update your variables.tf
-Update your tfvars file
-Terraform Apply
+- <a href="https://github.com/earchibong/terraform-wordpress/blob/main/documentation.md#create-a-private-subnet-in-vpc">Create a Private Subnet in VPC</a>
+- < ahref="https://github.com/earchibong/terraform-wordpress/blob/main/documentation.md#create-an-internet-gateway-for-instances-in-the-public-subnet-to-access-the-internet">Create an Internet Gateway for Instances in the public subnet to access the Internet</a>
+- <a href="https://github.com/earchibong/terraform-wordpress/blob/main/documentation.md#define-a-route-table-for-the-public-subnet-specifying-the-internet-gateway-as-the-target-for-all-internet-bound-traffic">Define a route table for the public subnet, specifying the internet gateway as the target for all internet-bound traffic</a>
+- <a href="https://github.com/earchibong/terraform-wordpress/blob/main/documentation.md#associate-the-routing-table-to-the-public-subnet-to-provide-the-internet-gateway-address">Associate the routing table to the Public Subnet to provide Internet Gateway Address</a>
+- <a href="https://github.com/earchibong/terraform-wordpress/blob/main/documentation.md#create-an-elastic-ip-for-the-nat-gateway">Create an Elastic IP for the NAT Gateway</a>
+- <a href="https://github.com/earchibong/terraform-wordpress/blob/main/documentation.md#create-a-nat-gateway-for-mysql-instance-to-access-the-internet">Create a NAT gateway for MySQL instance to access the Internet</a>
+- <a href="https://github.com/earchibong/terraform-wordpress/blob/main/documentation.md#create-a-route-table-for-the-nat-gateway-access-which-has-to-be-associated-with-mysql-instance">Create a route table for the NAT Gateway Access which has to be associated with MySQL Instance</a>
+- <a href="https://github.com/earchibong/terraform-wordpress/blob/main/documentation.md#associate-the-nat-gateway-access-route-table-with-the-mysql-instance">Associate the above-create route table with the MySQL Instance</a>
+- <a href="https://github.com/earchibong/terraform-wordpress/blob/main/documentation.md#create-a-security-group-for-the-bastion-host">Create a Security Group for the Bastion Host</a>
+- <a href="https://github.com/earchibong/terraform-wordpress/blob/main/documentation.md#create-a-security-group-for-the-wordpress-instance">Create a Security Group for the WordPress Instance</a>
+- <a href="https://github.com/earchibong/terraform-wordpress/blob/main/documentation.md#create-a-security-group-for-mysql-instance">Create a Security Group for MySQL Instance</a>
+- <a href="https://github.com/earchibong/terraform-wordpress/blob/main/documentation.md#launch-a-bastion-host">Launch a Bastion Host</a>
+- <a href="https://github.com/earchibong/terraform-wordpress/blob/main/documentation.md#launch-a-webserver-instance-hosting-wordpress-on-it">Launch a Webserver Instance hosting Wordpress on it</a>
+- <a href="https://github.com/earchibong/terraform-wordpress/blob/main/documentation.md#null-resource-and-provisioners">Null Resources and Provisioners</a>
+- <a href="https://github.com/earchibong/terraform-wordpress/blob/main/documentation.md#launch-a-mysql-instance-using-the-bash-install-script">Launch a MySQL Instance using the bash install script</a>
+- <a href="https://github.com/earchibong/terraform-wordpress/blob/main/documentation.md#update-variablestf-file">Update variables.tf file</a>
+- <a href="https://github.com/earchibong/terraform-wordpress/blob/main/documentation.md#update-tfvars-file">Update tfvars file</a>
+Terraform init, validate and apply
 Test your deployment
 
 <br>
