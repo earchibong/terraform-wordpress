@@ -15,6 +15,10 @@ This is a side project i decided do to create an AWS infrastructure with VPC, pu
 
 **Get the <a href="https://github.com/earchibong/terraform-wordpress/blob/main/documentation.md">full documentation for this project HERE</a>**
 
+<br>
+
+<br>
+
 ## Steps for this project include:
 
 - Install and configure Terraform on your local system
