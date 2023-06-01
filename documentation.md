@@ -1213,7 +1213,7 @@ variable "instance_type" {
 ```
 
 # General
-region    = "us-east-1"
+region    = "eu-west-2"
 profile   = "default"
 keypair   = "tf-deploy"
 base_path = "[YOUR_FILE_PATH]"
@@ -1223,12 +1223,12 @@ cidr_block = "10.0.0.0/16"
 
 # Subnets
 public_subnet_range  = "10.0.1.0/24"
-az_public            = "us-east-1a"
+az_public            = "eu-west-2a"
 private_subnet_range = "10.0.2.0/24"
-az_private           = "us-east-1b"
+az_private           = "eu-west-2b"
 
 # EC2 WordPress
-ami           = "ami-0e1c5be2aa956338b"
+ami           = "ami-0a6006bac3b9bb8d3"
 instance_type = "t2.micro"
 
 ```
