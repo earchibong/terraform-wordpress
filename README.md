@@ -1,9 +1,21 @@
-# terraform-wordpress
-Deploy WordPress and MySQL with Terraform on AWS EC2
+## Deploy WordPress and MySQL with Terraform on AWS EC2
 
-This is a side project i decided do to create an AWS infrastructure with VPC, public and private subnets, NAT gateway, and security groups using Terraform and deploy worpdress and mysqql with docker
+This is a side project i decided do to create an AWS infrastructure with VPC, public and private subnets, NAT gateway, and security groups using Terraform and deploy worpdress and mysql with docker.
 
-## Steps i'll cover include:
+<br>
+
+<br>
+
+![image](https://github.com/earchibong/terraform-wordpress/assets/92983658/53ff23ec-3d28-46ae-81f9-64d512ac12a8)
+
+
+<br>
+
+<br>
+
+**Get the <a href="https://github.com/earchibong/terraform-wordpress/blob/main/documentation.md">full documentation for this project HERE</a>**
+
+## Steps for this project include:
 
 - Install and configure Terraform on your local system
 - Install IDE for Terraform — VS Code Editor
