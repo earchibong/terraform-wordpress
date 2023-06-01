@@ -995,12 +995,12 @@ resource "null_resource" "bastion-provisioners" {
     host        = aws_instance.bastion.public_ip
     user        = "ec2-user"
     password    = ""
-    private_key = "private-key/tf-deploy.pem"
+    private_key = "tf-deploy.pem"
   }
 
   ## File Provisioner: Copies the terraform-key.pem file to /tmp/terraform-key.pem
   provisioner "file" {
-    source      = "private-key/tf-deploy.pem"
+    source      = "tf-deploy.pem"
     destination = "/tmp/terraform-key.pem"
   }
 }
@@ -1013,12 +1013,12 @@ resource "null_resource" "wp-provisioners" {
     host        = aws_instance.wordpress.public_ip
     user        = "ec2-user"
     password    = ""
-    private_key = "private-key/tf-deploy.pem"
+    private_key = "tf-deploy.pem"
   }
 
   ## File Provisioner: Copies the terraform-key.pem file to /tmp/terraform-key.pem
   provisioner "file" {
-    source      = "private-key/tf-deploy.pem"
+    source      = "tf-deploy.pem"
     destination = "/tmp/terraform-key.pem"
   }
 
