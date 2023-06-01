@@ -16,7 +16,7 @@
 - <a href="https://github.com/earchibong/terraform-wordpress/blob/main/documentation.md#create-a-new-terraform-configuration-file-and-specify-the-aws-provider-details">Create a new Terraform configuration file and specify the AWS provider details</a>
 - <a href="https://github.com/earchibong/terraform-wordpress/blob/main/documentation.md#create-terraformtfvars-file-with-defined-variables">Create terraform.tfvars file with defined variables</a>
 - <a href="https://github.com/earchibong/terraform-wordpress/blob/main/documentation.md#create-an-aws-key-pair-for-secure-ssh-connections-to-ec2-instances">Create an AWS Key pair for secure ssh connections to EC2 instances</a>
-Define the VPC resource, giving it a unique name and the desired CIDR block range.
+- <a href="https://github.com/earchibong/terraform-wordpress/blob/main/documentation.md#define-the-vpc-resource-giving-it-a-unique-name-and-the-desired-cidr-block-range">Define the VPC resource, giving it a unique name and the desired CIDR block range.</a>
 Create the Public Subnet with auto public IP Assignment enabled in VPC
 Create a Private Subnet in VPC
 Create an Internet Gateway for Instances in the public subnet to access the Internet
@@ -374,7 +374,11 @@ resource "aws_subnet" "private-subnet" {
 
 ## Create an Internet Gateway for Instances in the public subnet to access the Internet
 
-An internet gateway, enables instances in the VPC to communicate with the internet and  enables internet users to connect with instances in the VPC. This allows for the use of internet-based services and applications, such as web-based applications, content delivery networks, and other internet-based services.
+An internet gateway provides a connection point between a private network (such as a VPC in AWS) and the public internet. It enables communication between resources in the private network and the internet.
+
+An internet gateway allows both inbound and outbound traffic to pass through it. Inbound traffic from the internet can be directed to specific resources in the private network based on network configurations and security rules.
+
+Internet gateways are associated with public IP addresses, allowing resources within the private network to have public-facing IP addresses accessible from the internet.
 
 <br>
 
@@ -527,4 +531,714 @@ resource "aws_eip" "nat-gateway-eip" {
 
 <br>
 
-## 
+<img width="1028" alt="eip" src="https://github.com/earchibong/terraform-wordpress/assets/92983658/e568ce2d-68d2-4b4f-b822-23d45336fcea">
+
+<br>
+
+<br>
+
+## Create a NAT Gateway for MySQL instance to access the Internet
+A NAT gateway allows private network resources to communicate with the internet while maintaining a level of network security. It performs Network Address Translation, which translates private IP addresses of resources within a private network to a single public IP address when communicating with the internet.
+
+NAT gateways help hide the internal IP addresses of a private network from the public internet, providing a level of security by obscuring the internal network structure. It allows private instances to access the internet for updates and patches while maintaining the security of the private subnet.
+
+<br>
+
+<br>
+
+- create a file named `nat-gateway.tf` and add the following:
+
+```
+
+# Create a NAT Gateway for MySQL instance to access the Internet (performing source NAT).
+resource "aws_nat_gateway" "nat-gateway" {
+  # To ensure proper ordering, it is recommended to add an explicit dependency
+  # on the Internet Gateway for the VPC.
+  depends_on = [
+    aws_eip.nat-gateway-eip
+  ]
+
+  # The Allocation ID of the Elastic IP address for the gateway
+  allocation_id = aws_eip.nat-gateway-eip.id
+  
+  # The Subnet ID of the subnet in which the NAT gateway is placed
+  subnet_id     = aws_subnet.public-subnet.id
+
+  tags = {
+    Name = "NAT Gateway Project"
+  }
+}
+
+```
+
+<br>
+
+<br>
+
+<img width="1026" alt="nat-gatway" src="https://github.com/earchibong/terraform-wordpress/assets/92983658/3d94be1b-d2d5-4070-938a-ccca68b615e4">
+
+<br>
+
+<br>
+
+## Create a route table for the NAT Gateway Access which has to be associated with MySQL Instance
+
+Any traffic destined for the CIDR block of the MySQL instance will now be routed through the NAT gateway.
+
+
+- create a file named `rt-ng.tf` and add the following:
+
+```
+
+# Define a route table for the public subnet, specifying the internet gateway as the target for all internet-bound traffic.
+resource "aws_route_table" "nat-gateway-rt" {
+  depends_on = [
+    aws_nat_gateway.nat-gateway
+  ]
+
+  # VPC ID
+  vpc_id = aws_vpc.vpc.id
+
+  # NAT Rule
+  route {
+    cidr_block = "0.0.0.0/0"
+
+    # Identifier of a VPC NAT gateway
+    nat_gateway_id = aws_nat_gateway.nat-gateway.id
+  }
+
+  tags = {
+    Name = "route-table-nat-gateway"
+  }
+}
+
+```
+
+<br>
+
+<br>
+
+<img width="1026" alt="rt-ng" src="https://github.com/earchibong/terraform-wordpress/assets/92983658/df0c6d3f-1cb2-4143-acc0-e30b0f4fd8b9">
+
+<br>
+
+<br>
+
+## Associate the NAT gateway access route table with the MySQL instance
+
+- create a file named `rt-association-ng.tf` and add the following:
+
+```
+
+# Create a Route Table Association of the NAT Gateway route table with the Private Subnet
+resource "aws_route_table_association" "rt-association-ng" {
+  depends_on = [
+    aws_route_table.nat-gateway-rt
+  ]
+
+  # Public Subnet ID
+  subnet_id = aws_subnet.private-subnet.id
+
+  #  Route Table ID
+  route_table_id = aws_route_table.nat-gateway-rt.id
+}
+
+```
+
+<br>
+
+<br>
+
+<img width="1026" alt="rt-association-ng" src="https://github.com/earchibong/terraform-wordpress/assets/92983658/ed58755f-3417-4d3c-8940-1edf2ea81ada">
+
+<br>
+
+<br>
+
+## Create a Security Group for the Bastion Host
+
+To secure SSH connections to instances in the private subnet, you can launch a bastion host in the public subnet. The security group for the bastion host should allow incoming SSH connections from anywhere, or from a specific IP address for added security.
+
+We will configure the security group to allow incoming traffic on port 80 for HTTP and port 22 for SSH from the bastion host.
+
+<br>
+
+<br>
+
+- create a file named `sg-bastion.tf` and add the following:
+
+```
+
+# Creating a Security Group for the Bastion Host which allows anyone in the outside world to access the Bastion Host by SSH.
+resource "aws_security_group" "bastion-sg" {
+  depends_on = [
+    aws_vpc.vpc,
+    aws_subnet.public-subnet,
+    aws_subnet.private-subnet
+  ]
+
+  # Name of the security group for Bastion Host
+  name        = "bastion-sg"
+  description = "MySQL Access only from the Webserver Instances!"
+
+  # VPC ID in which Security group will be created
+  vpc_id = aws_vpc.vpc.id
+
+  # Create an inbound rule for Bastion Host SSH
+  ingress {
+    description = "Bastion Host SG"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # Outbound Network Traffic from the Bastion Host
+  egress {
+    description = "Outbound from Bastion Host"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "bastion-host-security-group"
+  }
+}
+
+
+```
+
+<br>
+
+<br>
+
+<img width="1031" alt="sg_bastion" src="https://github.com/earchibong/terraform-wordpress/assets/92983658/24a45135-4d3a-48b8-887c-329c6e396e00">
+
+
+<br>
+
+<br>
+
+## Create a Security Group for the WordPress instance
+
+A security group acts as a virtual firewall that controls inbound and outbound traffic for cloud resources such as virtual machines (VMs) or instances.
+
+Security groups allow you to specify which traffic is allowed to reach your instances, based on a range of security rules that you define. These rules specify the protocols, ports, and source IP ranges that are allowed to access your instances. Security groups provide an additional layer of security for your AWS environment.
+
+<br>
+
+<br>
+
+- create a file named `sg-wp.tf` and add the following:
+
+```
+
+# Create a Security Group for the WordPress instance, so that anyone in the outside world can access the instance by HTTP, PING, SSH
+resource "aws_security_group" "wp-sg" {
+  depends_on = [
+    aws_vpc.vpc,
+    aws_subnet.public-subnet,
+    aws_subnet.private-subnet
+  ]
+
+  # Name of the webserver security group
+  name        = "webserver-sg"
+  description = "Allow outside world to access the instance via HTTP, PING, SSH"
+
+  # VPC ID in which Security group has to be created!
+  vpc_id = aws_vpc.vpc.id
+
+  # Create an inbound rule for webserver HTTP access
+  ingress {
+    description = "HTTP to Webserver"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # Create an inbound rule for PING
+  ingress {
+    description = "PING to Webserver"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "ICMP"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # Create an inbound rule for SSH access
+  ingress {
+    description = "SSH to Webserver"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    security_groups = [aws_security_group.bastion-sg.id]
+  }
+
+  # Outward Network Traffic from the WordPress webserver
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "Wordpress Security Group"
+  }
+}
+
+
+```
+
+<br>
+
+<br>
+
+<img width="1028" alt="sg" src="https://github.com/earchibong/terraform-wordpress/assets/92983658/97b43170-29ac-4d2e-86ee-42cf0aa77de9">
+
+
+<br>
+
+<br>
+
+## Create a Security Group for MySQL instance
+
+The security group for the MySQL instance should allow incoming connections on port 3306 from the WordPress instance, using the security group ID of the WordPress instance in the inbound rule. It should also allow incoming SSH connections on port 22 from the bastion host, using the security group ID of the bastion host in the inbound rule. This will ensure that only the WordPress instance can connect to the MySQL instance on port 3306, and only the bastion host can SSH into the MySQL instance.
+
+Using security group IDs in the inbound rules has several advantages. It allows you to avoid having to update the rules when the public IP addresses of the instances change, and it makes it easier to scale your instances without having to create separate inbound rules for each instance.
+
+<br>
+
+<br>
+
+- create a file named `sg-mysql-tf` and add the following:
+
+```
+
+# Create a Security Group for Mysql instance which allows database access to only those instances who are having the WordPress security group created previously
+resource "aws_security_group" "mysql-sg" {
+  depends_on = [
+    aws_vpc.vpc,
+    aws_subnet.public-subnet,
+    aws_subnet.private-subnet,
+    aws_security_group.wp-sg
+  ]
+
+  # Name of the security group for MySQL instance
+  name        = "mysql-sg"
+  description = "MySQL Access only from the Webserver Instances"
+
+  # VPC ID in which Security group will be created
+  vpc_id = aws_vpc.vpc.id
+
+  # Create an inbound rule for MySQL
+  ingress {
+    description     = "MySQL Access"
+    from_port       = 3306
+    to_port         = 3306
+    protocol        = "tcp"
+    security_groups = [aws_security_group.wp-sg.id]
+  }
+
+  # Outbound Network Traffic from the MySQL instance
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "MySQL Security Group"
+  }
+}
+
+
+```
+
+<br>
+
+<br>
+
+<img width="1023" alt="sg-mysql" src="https://github.com/earchibong/terraform-wordpress/assets/92983658/f0570f29-765d-4967-bd6c-0eceb3d06ccf">
+
+<br>
+
+<br>
+
+## Launch a Bastion Host
+A Bastion host is a special type of EC2 instance that allows you to securely connect to your instances over the internet. It acts as a secure, intermediary connection point between your local computer and the instances in your AWS VPC.
+
+It provides access to a private network from an external network, such as the Internet. Bastion hosts are the only points of entry into the private network from external or untrusted networks. They serve as a single access point, reducing the attack surface and allowing organizations to implement stricter security controls and monitoring.
+
+The bastion host can be launched using the Amazon Linux 2 AMI and a t2.micro instance type. You can attach the key created earlier to the bastion host, and use a Terraform file provisioner to copy the key from your local machine to the bastion host (we will do this in Step 21 using null resources and provisioners). This will allow you to SSH from the bastion host to the instances in the private subnet using the same key. However, for added security, it is recommended to use different keys for each instance.
+
+<br>
+
+<br>
+
+- create a file named `ec2-bastion.tf` and add the following:
+
+```
+
+# Launch a Bastion Host
+resource "aws_instance" "bastion" {
+  depends_on = [
+    aws_instance.wordpress,
+    aws_instance.mysql
+  ]
+
+  # AMI ID - Amazon Linux 2 AMI (HVM) - Kernel 5.10, SSD Volume Type
+  ami           = var.ami
+  instance_type = var.instance_type
+  subnet_id     = aws_subnet.public-subnet.id
+
+  key_name = var.keypair
+
+  # Attach Bastion Security Group
+  vpc_security_group_ids = [aws_security_group.bastion-sg.id]
+
+  tags = {
+    Name = "bastion"
+  }
+}
+
+```
+
+<br>
+
+<br>
+
+<img width="1027" alt="ec2-bastion" src="https://github.com/earchibong/terraform-wordpress/assets/92983658/e53b757e-3a88-441f-aa3e-b44a1d55d5b7">
+
+<br>
+
+<br>
+
+## Launch a Webserver Instance hosting WordPress on it
+
+we will use an Amazon Linux 2 AMI to launch a public-facing web application, such as WordPress, in a public subnet.
+
+- create a file named `ec2-wp.tf` and add the following:
+
+```
+
+# Launch a Webserver Instance hosting WordPress in it.
+resource "aws_instance" "wordpress" {
+  depends_on = [
+    aws_vpc.vpc,
+    aws_subnet.public-subnet,
+    aws_subnet.private-subnet,
+    aws_security_group.bastion-sg,
+    aws_security_group.mysql-bastion-ssh-sg
+  ]
+
+  # AMI ID - Amazon Linux 2 AMI (HVM) - Kernel 5.10, SSD Volume Type
+  ami           = var.ami
+  instance_type = var.instance_type
+  subnet_id     = aws_subnet.public-subnet.id
+
+  key_name = "tf-deploy"
+
+  # Security groups to use
+  vpc_security_group_ids = [aws_security_group.wp-sg.id]
+
+  tags = {
+    Name = "wordpress"
+  }
+}
+
+
+```
+
+<br>
+
+<br>
+
+<img width="1025" alt="ec2-wp" src="https://github.com/earchibong/terraform-wordpress/assets/92983658/1b2e91a3-60fb-4a97-bcfb-cb6723f7f63c">
+
+
+<br>
+
+<br>
+
+## Null Resource and Provisioners
+
+In the context of infrastructure as code (IaC) tools like Terraform, a Null Resource and Provisioners are used to perform additional actions or execute commands that are not directly related to creating or managing resources.
+
+Provisioners in Terraform are used to define actions that should be performed on a resource after it is created or updated. Provisioners allow you to run scripts or execute commands on the target resource to perform tasks such as configuration, software installations, or initial setup. Although, it should be mentioned here that it's generally recommended to use configuration management tools like Ansible or Chef for more extensive and complex configuration management tasks.
+
+A Null Resource in Terraform is a resource type that does not represent an actual infrastructure object. Instead, it serves as a placeholder or an empty container where you can define arbitrary actions or dependencies between resources. It allows you to execute arbitrary code or trigger external operations during the Terraform lifecycle.
+
+The Null Resource is typically used in scenarios where you need to perform certain tasks that do not have a corresponding resource type or need to orchestrate actions between resources. For example, you might use a Null Resource to execute a shell script, call an external API, generate configuration files, or perform complex calculations.
+
+Null Resources don't have any inherent state or properties, and they do not create or manage any infrastructure resources. They are solely used to execute actions as part of the Terraform execution plan and lifecycle.
+
+In this context, We will use provisioners to automate the installation and configuration of WordPress, including the installation of Docker, pulling the WordPress image from Docker Hub, and launching a WordPress container with the image. You can pass environment variables to the script to configure the WordPress container for a MySQL database, and set up port forwarding from the Docker host to the Docker container on port 80. You can use the same key for this instance as you used for the bastion host.
+
+<br>
+
+<br>
+
+- create a file named `null-provisioners.tf` and add the following:
+
+```
+
+# Create Bastion Null Resource and Provisioners
+resource "null_resource" "bastion-provisioners" {
+  # Connection Block for Provisioners to connect to EC2 Instance
+  connection {
+    type        = "ssh"
+    host        = aws_instance.bastion.public_ip
+    user        = "ec2-user"
+    password    = ""
+    private_key = file("private-key/tf-deploy.pem")
+  }
+
+  ## File Provisioner: Copies the terraform-key.pem file to /tmp/terraform-key.pem
+  provisioner "file" {
+    source      = "private-key/tf-deploy.pem"
+    destination = "/tmp/terraform-key.pem"
+  }
+}
+
+# Create Wordpress Null Resource and Provisioners
+resource "null_resource" "wp-provisioners" {
+  # Connection Block for Provisioners to connect to EC2 Instance
+  connection {
+    type        = "ssh"
+    host        = aws_instance.wordpress.public_ip
+    user        = "ec2-user"
+    password    = ""
+    private_key = file("private-key/tf-deploy.pem")
+  }
+
+  ## File Provisioner: Copies the terraform-key.pem file to /tmp/terraform-key.pem
+  provisioner "file" {
+    source      = "private-key/tf-deploy.pem"
+    destination = "/tmp/terraform-key.pem"
+  }
+
+  ## Remote Exec Provisioner: Using remote-exec provisioner fix the private key permissions on Bastion Host
+  ## Install docker, start and enable the service, pull wordpress image and create the container
+  provisioner "remote-exec" {
+    inline = [
+      "sudo chmod 400 /tmp/tf-deploy.pem",
+      "sudo yum update -y",
+      "sudo yum install docker -y",
+      "sudo systemctl restart docker && sudo systemctl enable docker",
+      "sudo docker pull wordpress",
+      "sudo docker run --name wordpress -p 80:80 -e WORDPRESS_DB_HOST=${aws_instance.mysql.private_ip} -e WORDPRESS_DB_USER=root -e WORDPRESS_DB_PASSWORD=root -e WORDPRESS_DB_NAME=wordpressdb -d wordpress"
+    ]
+  }
+
+  ## Local Exec Provisioner:  local-exec provisioner (Destroy-Time Provisioner - Triggered during deletion of Resource)
+  /*  provisioner "local-exec" {
+    command = "echo Destroy time prov `date` >> destroy-time-prov.txt"
+    working_dir = "local-exec-output-files/"
+    when = destroy
+    #on_failure = continue
+  }  
+  */
+  # Creation Time Provisioners - By default they are created during resource creations (terraform apply)
+  # Destory Time Provisioners - Will be executed during "terraform destroy" command (when = destroy)
+}
+
+
+```
+
+<br>
+
+<br>
+
+## Launch a MySQL Instance using the bash install script
+
+To launch an EC2 instance for MySQL in a private subnet, we can use an Amazon Linux 2 AMI and pass a script in the user data. 
+
+- create a file named `ec2-mysql.tf`
+
+```
+
+# Launch a Webserver Instance hosting WordPress in it.
+resource "aws_instance" "mysql" {
+  depends_on = [
+    aws_instance.wordpress
+  ]
+
+  # AMI ID - Amazon Linux 2 AMI (HVM) - Kernel 5.10, SSD Volume Type
+  ami           = var.ami
+  user_data     = file("mysql-install.sh")
+  instance_type = var.instance_type
+  subnet_id     = aws_subnet.private-subnet.id
+
+  key_name = var.keypair
+
+  # Attaching 2 security groups here, 1 for the MySQL Database access by the Web-servers,
+  # & other one for the Bastion Host access for applying updates & patches! 
+  
+  vpc_security_group_ids = [aws_security_group.mysql-sg.id, aws_security_group.mysql-bastion-ssh-sg.id]
+
+  tags = {
+    Name = "mysql"
+  }
+}
+
+
+```
+
+<br>
+
+<br>
+
+<img width="1026" alt="ec2-mysql" src="https://github.com/earchibong/terraform-wordpress/assets/92983658/211a8cdc-3ed3-4da6-8be3-8325b76e5e31">
+
+
+<br>
+
+<br>
+
+Since we don’t need to pass any Terraform attributes to this script, you can create a `separate .sh` file and pass it to the EC2 user data using the file function. This script can be used to automate the installation and configuration of MySQL on the EC2 instance. Previously, we created 2 security groups (Steps 16 & 18) to secure the MySQL instance by configuring the security group to only allow incoming connections from the WordPress (for MySQL Database access) and Bastion (for updates & patches) instances in the public subnet. This will help to prevent unauthorised access to the MySQL database.
+
+<br>
+
+<br>
+
+- create a file named `mysql-install.sh`
+
+```
+
+#! /bin/bash
+yum update
+yum install docker -y
+systemctl restart docker
+systemctl enable docker
+docker pull mysql
+docker run --name mysql -e MYSQL_ROOT_PASSWORD=root \
+-e MYSQL_DATABASE=wordpressdb -p 3306:3306 -d mysql:5.7
+
+```
+
+<br>
+
+<br>
+
+<img width="1025" alt="nysql-install" src="https://github.com/earchibong/terraform-wordpress/assets/92983658/fcad0504-5b43-4d27-b0ac-5d624b12df56">
+
+
+<br>
+
+<br>
+
+Using this bash script will install and enable Docker, and then pull the mysql:5.7 image from Docker Hub. It will then launch a container using this image and pass the required environment variables to configure the MySQL server. It will also set up port forwarding from the Docker host to the Docker container on port 3306.
+
+<br>
+
+<br>
+
+## Update variables.tf file
+
+```
+
+# Input Vars
+## Generic Vars
+variable "region" {
+  description = "Provides details about a specific AWS region."
+  type        = string
+}
+
+variable "profile" {
+  description = "Assign the profile name here"
+  type        = string
+}
+
+variable "keypair" {
+  description = "Adding the SSH authorized key"
+  type        = string
+}
+
+## VPC Vars
+variable "cidr_block" {
+  description = "Tags to set on the bucket"
+  type        = string
+}
+
+## Public Subnet Vars
+variable "public_subnet_range" {
+  description = "IP Range of this subnet"
+  type        = string
+}
+
+variable "az_public" {
+  description = "AZ of this subnet"
+  type        = string
+}
+
+## Private Subnet Vars
+variable "private_subnet_range" {
+  description = "IP Range of this subnet"
+  type        = string
+}
+
+variable "az_private" {
+  description = "AZ of this subnet"
+  type        = string
+}
+
+## EC2 Wordpress Vars
+variable "ami" {
+  description = "AMI to use for the instance"
+  type        = string
+}
+
+variable "instance_type" {
+  description = "Instance type to use for the instance. "
+  type        = string
+}
+
+
+```
+
+<br>
+
+<br>
+
+## Update tfvars file
+
+```
+
+# General
+region    = "us-east-1"
+profile   = "default"
+keypair   = "tf-deploy"
+base_path = "[YOUR_FILE_PATH]"
+
+# VPC
+cidr_block = "10.0.0.0/16"
+
+# Subnets
+public_subnet_range  = "10.0.1.0/24"
+az_public            = "us-east-1a"
+private_subnet_range = "10.0.2.0/24"
+az_private           = "us-east-1b"
+
+# EC2 WordPress
+ami           = "ami-0b0dcb5067f052a63"
+instance_type = "t2.micro"
+
+```
+
+<br>
+
+<br>
+
+<img width="1028" alt="tfvars2" src="https://github.com/earchibong/terraform-wordpress/assets/92983658/5ff6125a-2957-4429-88bb-47474f2ea75b">
+
+
+<br>
+
+<br>
+
+
