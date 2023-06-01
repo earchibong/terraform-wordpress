@@ -933,7 +933,7 @@ resource "aws_instance" "wordpress" {
     aws_subnet.public-subnet,
     aws_subnet.private-subnet,
     aws_security_group.bastion-sg,
-    aws_security_group.mysql-bastion-ssh-sg
+    aws_security_group.mysql-sg
   ]
 
   # AMI ID - Amazon Linux 2 AMI (HVM) - Kernel 5.10, SSD Volume Type
@@ -1158,6 +1158,9 @@ variable "keypair" {
   description = "Adding the SSH authorized key"
   type        = string
 }
+
+# base_path for refrencing 
+variable "base_path" {}
 
 ## VPC Vars
 variable "cidr_block" {
