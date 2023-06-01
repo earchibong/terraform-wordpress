@@ -19,7 +19,7 @@
 - <a href="https://github.com/earchibong/terraform-wordpress/blob/main/documentation.md#define-the-vpc-resource-giving-it-a-unique-name-and-the-desired-cidr-block-range">Define the VPC resource, giving it a unique name and the desired CIDR block range.</a>
 - <a href="https://github.com/earchibong/terraform-wordpress/blob/main/documentation.md#create-the-public-subnet-with-auto-public-ip-assignment-enabled-in-vpc">Create the Public Subnet with auto public IP Assignment enabled in VPC</a>
 - <a href="https://github.com/earchibong/terraform-wordpress/blob/main/documentation.md#create-a-private-subnet-in-vpc">Create a Private Subnet in VPC</a>
-- < ahref="https://github.com/earchibong/terraform-wordpress/blob/main/documentation.md#create-an-internet-gateway-for-instances-in-the-public-subnet-to-access-the-internet">Create an Internet Gateway for Instances in the public subnet to access the Internet</a>
+- <a href="https://github.com/earchibong/terraform-wordpress/blob/main/documentation.md#create-an-internet-gateway-for-instances-in-the-public-subnet-to-access-the-internet">Create an Internet Gateway for Instances in the public subnet to access the Internet</a>
 - <a href="https://github.com/earchibong/terraform-wordpress/blob/main/documentation.md#define-a-route-table-for-the-public-subnet-specifying-the-internet-gateway-as-the-target-for-all-internet-bound-traffic">Define a route table for the public subnet, specifying the internet gateway as the target for all internet-bound traffic</a>
 - <a href="https://github.com/earchibong/terraform-wordpress/blob/main/documentation.md#associate-the-routing-table-to-the-public-subnet-to-provide-the-internet-gateway-address">Associate the routing table to the Public Subnet to provide Internet Gateway Address</a>
 - <a href="https://github.com/earchibong/terraform-wordpress/blob/main/documentation.md#create-an-elastic-ip-for-the-nat-gateway">Create an Elastic IP for the NAT Gateway</a>
@@ -1241,4 +1241,12 @@ instance_type = "t2.micro"
 
 <br>
 
+## Terraform init, validate and Apply
 
+```
+
+terraform init
+terraform validate
+terraform apply
+
+```
