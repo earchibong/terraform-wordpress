@@ -1319,3 +1319,537 @@ At the moment, there are currently too many files and with a larger project, thi
 
 ```
 
+
+*********************************
+# Private Key and Keypair
+**********************************
+## Create a key with RSA algorithm with 4096 rsa bits
+resource "tls_private_key" "private_key" {
+  algorithm = "RSA"
+  rsa_bits  = 4096
+}
+
+## Create a key pair using above private key
+resource "aws_key_pair" "keypair" {
+
+  # Name of the Key
+  key_name = var.keypair
+
+  public_key = tls_private_key.private_key.public_key_openssh
+  depends_on = [tls_private_key.private_key]
+}
+
+## Save the private key at the specified path
+resource "local_file" "save-key" {
+  content  = tls_private_key.private_key.private_key_pem
+  filename = "${var.base_path}/${var.keypair}.pem"
+}
+
+*******************************
+# Create VPC
+*******************************
+resource "aws_vpc" "vpc" {
+
+  # The IPv4 CIDR block for the VPC
+  cidr_block = var.cidr_block
+
+  # A boolean flag to enable/disable DNS support in the VPC. Defaults to true.
+  enable_dns_support = true
+
+  tags = {
+    Name = "vpc"
+  }
+} 
+
+****************************************
+# Create public subnet
+***************************************
+resource "aws_subnet" "public-subnet" {
+  depends_on = [
+    aws_vpc.vpc
+  ]
+
+  # VPC in which subnet will be created
+  vpc_id     = aws_vpc.vpc.id
+  cidr_block = var.public_subnet_range
+
+  # The AZ for the subnet
+  availability_zone = var.az_public
+
+  # Specify true to indicate that instances launched into the subnet should be assigned a public IP address
+  map_public_ip_on_launch = true
+
+  tags = {
+    Name = "Public Subnet"
+  }
+} 
+
+***********************************
+# Create private subnet
+***********************************
+resource "aws_subnet" "private-subnet" {
+  depends_on = [
+    aws_vpc.vpc,
+    aws_subnet.public-subnet
+  ]
+
+  # VPC in which subnet will be created
+  vpc_id     = aws_vpc.vpc.id
+  cidr_block = var.private_subnet_range
+
+  # The AZ for the subnet
+  availability_zone = var.az_private
+
+  tags = {
+    Name = "Private Subnet"
+  }
+}
+
+****************************************
+# Create internet gateway
+****************************************
+resource "aws_internet_gateway" "my_igw" {
+  vpc_id = aws_vpc.my_vpc.id
+
+  tags = {
+    Name = "MyIGW"
+  }
+}
+
+# Attach internet gateway to VPC
+resource "aws_internet_gateway" "igw" {
+  depends_on = [
+    aws_vpc.vpc,
+    aws_subnet.public-subnet,
+    aws_subnet.private-subnet
+  ]
+
+  # VPC in which IGW will be created
+  vpc_id = aws_vpc.vpc.id
+
+  tags = {
+    Name = "Internet Gateway"
+  }
+}
+
+
+*******************************************************************
+# Define Route Tables & Route Table Associations For Public Subnet
+*******************************************************************
+resource "aws_route_table" "public-subnet-rt" {
+  depends_on = [
+    aws_vpc.vpc,
+    aws_internet_gateway.igw
+  ]
+
+  # VPC ID
+  vpc_id = aws_vpc.vpc.id
+
+  # NAT Rule
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.igw.id
+  }
+
+  tags = {
+    Name = "route-table-internet-gateway"
+  }
+}
+
+resource "aws_route_table_association" "rt-association" {
+  depends_on = [
+    aws_vpc.vpc,
+    aws_subnet.public-subnet,
+    aws_subnet.private-subnet,
+    aws_route_table.public-subnet-rt
+  ]
+
+  # Public Subnet ID
+  subnet_id = aws_subnet.public-subnet.id
+
+  #  Route Table ID
+  route_table_id = aws_route_table.public-subnet-rt.id
+}
+
+
+*******************************************
+# Create an Elastic IP for the NAT Gateway
+******************************************
+resource "aws_eip" "nat-gateway-eip" {
+  depends_on = [
+    aws_route_table_association.rt-association
+  ]
+
+  vpc = true
+}
+
+
+******************************************************************
+# Create a NAT Gateway for MySQL instance to access the Internet 
+******************************************************************
+resource "aws_nat_gateway" "nat-gateway" {
+  # To ensure proper ordering, it is recommended to add an explicit dependency
+  # on the Internet Gateway for the VPC.
+  depends_on = [
+    aws_eip.nat-gateway-eip
+  ]
+
+  # The Allocation ID of the Elastic IP address for the gateway
+  allocation_id = aws_eip.nat-gateway-eip.id
+  
+  # The Subnet ID of the subnet in which the NAT gateway is placed
+  subnet_id     = aws_subnet.public-subnet.id
+
+  tags = {
+    Name = "NAT Gateway Project"
+  }
+}
+
+
+***********************************************************************
+# Define a route table for the natgateway and route table association
+***********************************************************************
+resource "aws_route_table" "nat-gateway-rt" {
+  depends_on = [
+    aws_nat_gateway.nat-gateway
+  ]
+
+  # VPC ID
+  vpc_id = aws_vpc.vpc.id
+
+  # NAT Rule
+  route {
+    cidr_block = "0.0.0.0/0"
+
+    # Identifier of a VPC NAT gateway
+    nat_gateway_id = aws_nat_gateway.nat-gateway.id
+  }
+
+  tags = {
+    Name = "route-table-nat-gateway"
+  }
+}
+
+
+resource "aws_route_table_association" "rt-association-ng" {
+  depends_on = [
+    aws_route_table.nat-gateway-rt
+  ]
+
+  # Public Subnet ID
+  subnet_id = aws_subnet.private-subnet.id
+
+  #  Route Table ID
+  route_table_id = aws_route_table.nat-gateway-rt.id
+}
+
+
+********************************************************
+# security group For Bastion Host
+********************************************************
+
+resource "aws_security_group" "bastion-sg" {
+  depends_on = [
+    aws_vpc.vpc,
+    aws_subnet.public-subnet,
+    aws_subnet.private-subnet
+  ]
+
+  # Name of the security group for Bastion Host
+  name        = "bastion-sg"
+  description = "MySQL Access only from the Webserver Instances!"
+
+  # VPC ID in which Security group will be created
+  vpc_id = aws_vpc.vpc.id
+
+  # Create an inbound rule for Bastion Host SSH
+  ingress {
+    description = "Bastion Host SG"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # Outbound Network Traffic from the Bastion Host
+  egress {
+    description = "Outbound from Bastion Host"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "bastion-host-security-group"
+  }
+}
+
+
+********************************************************
+# security group For Wordpress
+********************************************************
+
+resource "aws_security_group" "wp-sg" {
+  depends_on = [
+    aws_vpc.vpc,
+    aws_subnet.public-subnet,
+    aws_subnet.private-subnet
+  ]
+
+  # Name of the webserver security group
+  name        = "webserver-sg"
+  description = "Allow outside world to access the instance via HTTP, PING, SSH"
+
+  # VPC ID in which Security group has to be created!
+  vpc_id = aws_vpc.vpc.id
+
+  # Create an inbound rule for webserver HTTP access
+  ingress {
+    description = "HTTP to Webserver"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # Create an inbound rule for PING
+  ingress {
+    description = "PING to Webserver"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "ICMP"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # Create an inbound rule for SSH access
+  ingress {
+    description = "SSH to Webserver"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    ##security_groups = [aws_security_group.bastion-sg.id]
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # Outward Network Traffic from the WordPress webserver
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "Wordpress Security Group"
+  }
+}
+
+
+********************************************************
+# security group For MYSQL
+********************************************************
+
+resource "aws_security_group" "mysql-sg" {
+  depends_on = [
+    aws_vpc.vpc,
+    aws_subnet.public-subnet,
+    aws_subnet.private-subnet,
+    aws_security_group.wp-sg
+  ]
+
+  # Name of the security group for MySQL instance
+  name        = "mysql-sg"
+  description = "MySQL Access only from the Webserver Instances"
+
+  # VPC ID in which Security group will be created
+  vpc_id = aws_vpc.vpc.id
+
+  # Create an inbound rule for MySQL
+  ingress {
+    description     = "MySQL Access"
+    from_port       = 3306
+    to_port         = 3306
+    protocol        = "tcp"
+    security_groups = [aws_security_group.wp-sg.id]
+  }
+
+  # Create an inbound rule for SSH access
+  ingress {
+    description = "SSH to Webserver"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    security_groups = [aws_security_group.bastion-sg.id]
+  }
+  
+  # Outbound Network Traffic from the MySQL instance
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "MySQL Security Group"
+  }
+}
+
+*************************************
+# Launch a Bastion Host
+**************************************
+resource "aws_instance" "bastion" {
+  depends_on = [
+    aws_instance.wordpress,
+    aws_instance.mysql
+  ]
+
+  # AMI ID - Amazon Linux 2 AMI (HVM) - Kernel 5.10, SSD Volume Type
+  ami           = var.ami
+  instance_type = var.instance_type
+  subnet_id     = aws_subnet.public-subnet.id
+
+  key_name = var.keypair
+
+  # Attach Bastion Security Group
+  vpc_security_group_ids = [aws_security_group.bastion-sg.id]
+
+  tags = {
+    Name = "bastion"
+  }
+}
+
+************************************
+# Launch a Webserver Instance 
+************************************
+resource "aws_instance" "wordpress" {
+  depends_on = [
+    aws_vpc.vpc,
+    aws_subnet.public-subnet,
+    aws_subnet.private-subnet,
+    aws_security_group.bastion-sg,
+    aws_security_group.mysql-sg
+  ]
+
+  # AMI ID - Amazon Linux 2 AMI (HVM) - Kernel 5.10, SSD Volume Type
+  ami           = var.ami
+  instance_type = var.instance_type
+  subnet_id     = aws_subnet.public-subnet.id
+
+  key_name = "tf-deploy"
+
+  # Security groups to use
+  vpc_security_group_ids = [aws_security_group.wp-sg.id]
+
+  tags = {
+    Name = "wordpress"
+  }
+}
+
+
+****************************************
+# Create Null Resources & Provisioners
+*******************************************
+
+# Create Bastion Null Resource and Provisioners
+resource "null_resource" "bastion-provisioners" {
+  # Connection Block for Provisioners to connect to EC2 Instance
+  connection {
+    type        = "ssh"
+    host        = aws_instance.bastion.public_ip
+    user        = "ec2-user"
+    password    = ""
+    private_key = file("${var.base_path}/${var.keypair}.pem")
+  }
+
+  ## File Provisioner: Copies the terraform-key.pem file to /tmp/terraform-key.pem
+  provisioner "file" {
+    source      = local_file.save-key.filename
+    destination = "/tmp/terraform-key.pem"
+  }
+}
+
+# Create Wordpress Null Resource and Provisioners
+resource "null_resource" "wp-provisioners" {
+  # Connection Block for Provisioners to connect to EC2 Instance
+  connection {
+    type        = "ssh"
+    host        = aws_instance.wordpress.public_ip
+    user        = "ec2-user"
+    password    = ""
+    private_key = file("${var.base_path}/${var.keypair}.pem")
+  }
+
+  ## File Provisioner: Copies the terraform-key.pem file to /tmp/terraform-key.pem
+  provisioner "file" {
+    source      = local_file.save-key.filename
+    destination = "/tmp/terraform-key.pem"
+  }
+
+  ## Remote Exec Provisioner: Using remote-exec provisioner fix the private key permissions on Bastion Host
+  ## Install docker, start and enable the service, pull wordpress image and create the container
+  provisioner "remote-exec" {
+    inline = [
+      "sudo chmod 400 /tmp/terraform-key.pem",
+      "sudo yum update -y",
+      "sudo yum install docker -y",
+      "sudo systemctl restart docker && sudo systemctl enable docker",
+      "sudo docker pull wordpress",
+      "sudo docker run --name wordpress -p 80:80 -e WORDPRESS_DB_HOST=${aws_instance.mysql.private_ip} -e WORDPRESS_DB_USER=root -e WORDPRESS_DB_PASSWORD=root -e WORDPRESS_DB_NAME=wordpressdb -d wordpress"
+    ]
+  }
+
+  ## Local Exec Provisioner:  local-exec provisioner (Destroy-Time Provisioner - Triggered during deletion of Resource)
+  /*  provisioner "local-exec" {
+    command = "echo Destroy time prov `date` >> destroy-time-prov.txt"
+    working_dir = "local-exec-output-files/"
+    when = destroy
+    #on_failure = continue
+  }  
+  */
+  # Creation Time Provisioners - By default they are created during resource creations (terraform apply)
+  # Destory Time Provisioners - Will be executed during "terraform destroy" command (when = destroy)
+}
+
+
+***********************************
+# Create EC2 instance for MySQL
+*************************************
+resource "aws_instance" "mysql" {
+  depends_on = [
+    aws_instance.wordpress
+  ]
+
+  # AMI ID - Amazon Linux 2 AMI (HVM) - Kernel 5.10, SSD Volume Type
+  ami           = var.ami
+  user_data     = file("mysql-install.sh")
+  instance_type = var.instance_type
+  subnet_id     = aws_subnet.private-subnet.id
+
+  key_name = var.keypair
+
+  # Attaching 2 security groups here, 1 for the MySQL Database access by the Web-servers,
+  # & other one for the Bastion Host access for applying updates & patches!  
+  
+  vpc_security_group_ids = [aws_security_group.mysql-sg.id, aws_security_group.bastion-sg.id]
+
+  tags = {
+    Name = "mysql"
+  }
+}
+
+
+```
+
+<br>
+
+<br>
+
+```
+
+terraform init
+terraform plan
+terraform apply
+
+```
