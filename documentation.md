@@ -506,7 +506,7 @@ resource "aws_route_table_association" "rt-association" {
 
 ## Create an Elastic IP for the NAT Gateway
 
-EIPs are useful for providing a fixed, public IP address for resources that need to be accessed from the internet, such as web servers or databases. They can be used with AWS resources such as EC2 instances, NAT gateways, and network interfaces.
+EIPs are useful for providing a fixed, public IP address for resources that need to be accessed from the internet, such as web servers or databases. They can be used with AWS resources such as EC2 instances, NAT gateways, and network interfaces. Even if the resource is behind a network address translation (NAT) device or a firewall, with an aloocated Elastic IP, the rtesources can be accessed from the internet. 
 
 <br>
 
