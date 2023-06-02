@@ -35,8 +35,9 @@
 - <a href="https://github.com/earchibong/terraform-wordpress/blob/main/documentation.md#launch-a-mysql-instance-using-the-bash-install-script">Launch a MySQL Instance using the bash install script</a>
 - <a href="https://github.com/earchibong/terraform-wordpress/blob/main/documentation.md#update-variablestf-file">Update variables.tf file</a>
 - <a href="https://github.com/earchibong/terraform-wordpress/blob/main/documentation.md#update-tfvars-file">Update tfvars file</a>
-Terraform init, validate and apply
-Test your deployment
+- <a href="https://github.com/earchibong/terraform-wordpress/blob/main/documentation.md#terraform-init-validate-and-apply">Terraform init, validate and apply</a>
+- <a href="https://github.com/earchibong/terraform-wordpress/blob/main/documentation.md#test-the-deployment">Test the deployment</a>
+- <a href="https://github.com/earchibong/terraform-wordpress/blob/main/documentation.md#refactor-terraform-codes"> Refactor Terraform Codes </a>
 
 <br>
 
@@ -1320,9 +1321,10 @@ At the moment, there are currently too many files and with a larger project, thi
 ```
 
 
-*********************************
+
+# *********************************
 # Private Key and Keypair
-**********************************
+# **********************************
 ## Create a key with RSA algorithm with 4096 rsa bits
 resource "tls_private_key" "private_key" {
   algorithm = "RSA"
@@ -1345,9 +1347,9 @@ resource "local_file" "save-key" {
   filename = "${var.base_path}/${var.keypair}.pem"
 }
 
-*******************************
+# *******************************
 # Create VPC
-*******************************
+# *******************************
 resource "aws_vpc" "vpc" {
 
   # The IPv4 CIDR block for the VPC
@@ -1361,9 +1363,9 @@ resource "aws_vpc" "vpc" {
   }
 } 
 
-****************************************
+# ****************************************
 # Create public subnet
-***************************************
+# ***************************************
 resource "aws_subnet" "public-subnet" {
   depends_on = [
     aws_vpc.vpc
@@ -1384,9 +1386,9 @@ resource "aws_subnet" "public-subnet" {
   }
 } 
 
-***********************************
+# ***********************************
 # Create private subnet
-***********************************
+# ***********************************
 resource "aws_subnet" "private-subnet" {
   depends_on = [
     aws_vpc.vpc,
@@ -1405,18 +1407,9 @@ resource "aws_subnet" "private-subnet" {
   }
 }
 
-****************************************
+# ****************************************
 # Create internet gateway
-****************************************
-resource "aws_internet_gateway" "my_igw" {
-  vpc_id = aws_vpc.my_vpc.id
-
-  tags = {
-    Name = "MyIGW"
-  }
-}
-
-# Attach internet gateway to VPC
+# ****************************************
 resource "aws_internet_gateway" "igw" {
   depends_on = [
     aws_vpc.vpc,
@@ -1433,9 +1426,9 @@ resource "aws_internet_gateway" "igw" {
 }
 
 
-*******************************************************************
+# *******************************************************************
 # Define Route Tables & Route Table Associations For Public Subnet
-*******************************************************************
+# *******************************************************************
 resource "aws_route_table" "public-subnet-rt" {
   depends_on = [
     aws_vpc.vpc,
@@ -1472,9 +1465,9 @@ resource "aws_route_table_association" "rt-association" {
 }
 
 
-*******************************************
+# *******************************************
 # Create an Elastic IP for the NAT Gateway
-******************************************
+# ******************************************
 resource "aws_eip" "nat-gateway-eip" {
   depends_on = [
     aws_route_table_association.rt-association
@@ -1484,9 +1477,9 @@ resource "aws_eip" "nat-gateway-eip" {
 }
 
 
-******************************************************************
+# ******************************************************************
 # Create a NAT Gateway for MySQL instance to access the Internet 
-******************************************************************
+# ******************************************************************
 resource "aws_nat_gateway" "nat-gateway" {
   # To ensure proper ordering, it is recommended to add an explicit dependency
   # on the Internet Gateway for the VPC.
@@ -1506,9 +1499,9 @@ resource "aws_nat_gateway" "nat-gateway" {
 }
 
 
-***********************************************************************
+# ***********************************************************************
 # Define a route table for the natgateway and route table association
-***********************************************************************
+# ***********************************************************************
 resource "aws_route_table" "nat-gateway-rt" {
   depends_on = [
     aws_nat_gateway.nat-gateway
@@ -1544,9 +1537,9 @@ resource "aws_route_table_association" "rt-association-ng" {
 }
 
 
-********************************************************
+# ********************************************************
 # security group For Bastion Host
-********************************************************
+# ********************************************************
 
 resource "aws_security_group" "bastion-sg" {
   depends_on = [
@@ -1586,9 +1579,9 @@ resource "aws_security_group" "bastion-sg" {
 }
 
 
-********************************************************
+# ********************************************************
 # security group For Wordpress
-********************************************************
+# *******************************************************
 
 resource "aws_security_group" "wp-sg" {
   depends_on = [
@@ -1646,9 +1639,9 @@ resource "aws_security_group" "wp-sg" {
 }
 
 
-********************************************************
+# ********************************************************
 # security group For MYSQL
-********************************************************
+# ********************************************************
 
 resource "aws_security_group" "mysql-sg" {
   depends_on = [
@@ -1696,9 +1689,9 @@ resource "aws_security_group" "mysql-sg" {
   }
 }
 
-*************************************
+# *************************************
 # Launch a Bastion Host
-**************************************
+# **************************************
 resource "aws_instance" "bastion" {
   depends_on = [
     aws_instance.wordpress,
@@ -1720,9 +1713,9 @@ resource "aws_instance" "bastion" {
   }
 }
 
-************************************
+# ************************************
 # Launch a Webserver Instance 
-************************************
+# ************************************
 resource "aws_instance" "wordpress" {
   depends_on = [
     aws_vpc.vpc,
@@ -1748,9 +1741,9 @@ resource "aws_instance" "wordpress" {
 }
 
 
-****************************************
+# ****************************************
 # Create Null Resources & Provisioners
-*******************************************
+# *******************************************
 
 # Create Bastion Null Resource and Provisioners
 resource "null_resource" "bastion-provisioners" {
@@ -1813,9 +1806,9 @@ resource "null_resource" "wp-provisioners" {
 }
 
 
-***********************************
+# ***********************************
 # Create EC2 instance for MySQL
-*************************************
+# *************************************
 resource "aws_instance" "mysql" {
   depends_on = [
     aws_instance.wordpress
@@ -1838,6 +1831,8 @@ resource "aws_instance" "mysql" {
     Name = "mysql"
   }
 }
+
+
 
 
 ```
