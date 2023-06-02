@@ -843,6 +843,15 @@ resource "aws_security_group" "mysql-sg" {
     security_groups = [aws_security_group.wp-sg.id]
   }
 
+  # Create an inbound rule for SSH access
+  ingress {
+    description = "SSH to Webserver"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    security_groups = [aws_security_group.bastion-sg.id]
+  }
+  
   # Outbound Network Traffic from the MySQL instance
   egress {
     from_port   = 0
