@@ -774,7 +774,7 @@ resource "aws_security_group" "wp-sg" {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    security_groups = [aws_security_group.bastion-sg.id]
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   # Outward Network Traffic from the WordPress webserver
@@ -1262,3 +1262,60 @@ terraform validate
 terraform apply
 
 ```
+
+<br>
+
+<br>
+
+<img width="924" alt="apply-complete" src="https://github.com/earchibong/terraform-wordpress/assets/92983658/75352b18-3bba-46e1-8253-5138a9f3ec32">
+
+<br>
+
+<br>
+
+## Test the deployment
+
+### Remote access to bastion host & from there access MySQL remotely
+```
+
+# Test ssh access to bastion host
+ssh ec2-user@[BASTION_PUBLIC_IP] -i private-key/tf-deploy.pem 
+
+# Test ssh access from bastion host to mysql
+ssh ec2-user@[MYSQL_PRIVATE_IP] -i /tmp/terraform-key.pem
+
+```
+
+<br>
+
+<br>
+
+<img width="1137" alt="test-bastion-mysql" src="https://github.com/earchibong/terraform-wordpress/assets/92983658/2f99f33e-e651-4cab-bf5f-4bdae19ac106">
+
+<br>
+
+<br>
+
+### Wordpress
+
+Once all the infrastructure has been provisioned, you can access the WordPress instance by copying its public IP address and pasting it into a web browser. Since we have already passed the required environment variables to the WordPress container, you don’t need to configure WordPress for MySQL. You can simply select a language and create an account to get started using WordPress.
+
+<br>
+
+<br>
+
+<img width="1387" alt="wordpress" src="https://github.com/earchibong/terraform-wordpress/assets/92983658/a5e99a4d-c4a0-45e0-9c2d-54933ef11ff5">
+
+
+<br>
+
+<br>
+
+## Refactor Terraform Codes
+
+At the moment, there are currently too many files and with a larger project, this could become a problem. So, we can solve this by putting everything in one place.
+
+- create a file named `main.tf` and move all the definitions of the AWS provider, VPC, subnets, internet gateway, security group, and EC2 instances for WordPress and MySQL. Also include the provisioner block using local-exec to echo a message indicating the provisioning steps for each instance. here's what the final file should look like
+
+```
+
